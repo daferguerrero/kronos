@@ -7,6 +7,7 @@ describe("competency-scheduler", () => {
   it("programa una competencia completa", () => {
     const competency = {
       competencyCode: "220501092",
+      competencyType: "TECHNICAL",
 
       learningActivities: [
         {
@@ -32,6 +33,7 @@ describe("competency-scheduler", () => {
   it("calcula el inicio y fin de la competencia", () => {
     const competency = {
       competencyCode: "220501092",
+      competencyType: "TECHNICAL",
 
       learningActivities: [
         {
@@ -58,6 +60,7 @@ describe("competency-scheduler", () => {
   it("calcula métricas de la competencia programada", () => {
     const competency = {
       competencyCode: "220501092",
+      competencyType: "TECHNICAL",
 
       learningActivities: [
         {
