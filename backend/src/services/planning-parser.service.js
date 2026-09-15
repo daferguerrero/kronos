@@ -220,12 +220,14 @@ const parseCompetency = (competencyText) => {
   };
 };
 
+const getCompetencyType = (competencyCode) =>
+  competencyCode.startsWith("24") ? "TRANSVERSAL" : "TECHNICAL";
+
 const parseLearningActivity = (learningActivityText) => {
   const [code, ...nameParts] = learningActivityText.split(" - ");
 
   return {
     code: code?.trim() ?? "",
-
     name: nameParts.join(" - ").trim(),
   };
 };
@@ -252,6 +254,9 @@ const groupByCompetency = (records) => {
       map.set(key, {
         competencyCode:
           parsedCompetency.code,
+
+        competencyType:
+          getCompetencyType(parsedCompetency.code),
 
         competencyName:
           parsedCompetency.name,
@@ -280,7 +285,7 @@ const groupByCompetency = (records) => {
 
     return {
       competencyCode: competency.competencyCode,
-
+      competencyType: competency.competencyType,
       competencyName: competency.competencyName,
 
       totalLearningActivities:

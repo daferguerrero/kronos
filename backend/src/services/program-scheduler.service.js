@@ -48,6 +48,63 @@ const schedule = (competencies, startDate) => {
   };
 };
 
+const getTechnicalCompetencies = (competencies) =>
+  competencies.filter(
+    (competency) => competency.competencyType === "TECHNICAL",
+  );
+
+const getTransversalCompetencies = (competencies) =>
+  competencies.filter(
+    (competency) => competency.competencyType === "TRANSVERSAL",
+  );
+
+const groupCompetenciesByType = (competencies) => {
+  return {
+    technical: getTechnicalCompetencies(competencies),
+    transversal: getTransversalCompetencies(competencies),
+  };
+};
+
+const calculateTypeMetrics = (competencies) => {
+  const grouped = groupCompetenciesByType(competencies);
+
+  const technicalWeeks = grouped.technical.reduce(
+    (total, competency) => total + (competency.totalWeeks || 0),
+    0,
+  );
+
+  const transversalWeeks = grouped.transversal.reduce(
+    (total, competency) => total + (competency.totalWeeks || 0),
+    0,
+  );
+
+  return {
+    technicalWeeks,
+    transversalWeeks,
+  };
+};
+
+const analyzeCompetencyDistribution = (competencies) => {
+  const grouped = groupCompetenciesByType(competencies);
+  const totalCompetencies = competencies.length;
+  const technicalCount = grouped.technical.length;
+  const transversalCount = grouped.transversal.length;
+
+  return {
+    totalCompetencies,
+    technicalCount,
+    transversalCount,
+    hasTechnical: technicalCount > 0,
+    hasTransversal: transversalCount > 0,
+    hasConcurrencyPotential: technicalCount > 0 && transversalCount > 0,
+  };
+};
+
 export default {
   schedule,
+  getTechnicalCompetencies,
+  getTransversalCompetencies,
+  groupCompetenciesByType,
+  calculateTypeMetrics,
+  analyzeCompetencyDistribution
 };

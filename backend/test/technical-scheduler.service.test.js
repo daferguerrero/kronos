@@ -8,11 +8,13 @@ describe ("technical-scheduler", () => {
     const competencies = [
       {
         competencyCode: "220501092",
+        competencyType: "TECHNICAL",
         estimatedWeeks: 3,
       },
 
       {
         competencyCode: "220501093",
+        competencyType: "TECHNICAL",
         estimatedWeeks: 2,
       },
     ];
@@ -25,17 +27,20 @@ describe ("technical-scheduler", () => {
     assert.equal(result.length, 2);
     assert.equal(result[0].competencyCode, "220501092");
     assert.equal(result[1].competencyCode, "220501093");
+    assert.equal(result[0].competencyType, "TECHNICAL");
   });
 
   it("encadena las competencias sin solapamientos", () => {
     const competencies = [
       {
         competencyCode: "220501092",
+        competencyType: "TECHNICAL",
         estimatedWeeks: 3,
       },
 
       {
         competencyCode: "220501093",
+        competencyType: "TECHNICAL",
         estimatedWeeks: 2,
       },
     ];
@@ -63,6 +68,7 @@ describe ("technical-scheduler", () => {
     const competencies = [
       {
         competencyCode: "220501092",
+        competencyType: "TECHNICAL",
         estimatedWeeks: 4,
       },
     ];
@@ -80,6 +86,7 @@ describe ("technical-scheduler", () => {
     const competencies = [
       {
         competencyCode: "220501092",
+        competencyType: "TECHNICAL",
         estimatedWeeks: 3,
       },
     ];
