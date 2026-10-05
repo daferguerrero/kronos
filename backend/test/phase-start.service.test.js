@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import phaseStartService from "../src/services/phase-start.service.js";
+import phaseScheduleService from "../src/services/phase-schedule.service.js";
 
 describe("cálculo del inicio de la fase", () => {
   it("calcula el inicio de una fase a partir del fin de la fase anterior", () => {
@@ -339,6 +340,9 @@ describe("cálculo del inicio de la fase", () => {
       result.endDate.toISOString().substring(0, 10), "2026-02-21",
     );
     assert.equal(result.timelineIntegrity, true);
+    assert.equal(result.invalidPhases, 0);
+    assert.equal(result.validPhases, 2);
+    assert.equal(result.phaseValidityPercentage, 100);
   });
 
   it("detecta una línea temporal inconsistente", () => {
@@ -350,6 +354,9 @@ describe("cálculo del inicio de la fase", () => {
     ]);
 
     assert.equal(result.timelineIntegrity, false);
+    assert.equal(result.invalidPhases, 1);
+    assert.equal(result.validPhases, 0);
+    assert.equal(result.phaseValidityPercentage, 0);
   });
 
   it("genera un resumen vacío para una línea temporal vacía", () => {
@@ -360,6 +367,9 @@ describe("cálculo del inicio de la fase", () => {
     assert.equal(result.endDate, null);
     assert.equal(result.durationDays, 0);
     assert.equal(result.timelineIntegrity, true);
+    assert.equal(result.invalidPhases, 0);
+    assert.equal(result.validPhases, 0);
+    assert.equal(result.phaseValidityPercentage, 0);
   });
 
   it("calcula la duración total de la línea temporal", () => {
@@ -581,11 +591,116 @@ describe("cálculo del inicio de la fase", () => {
     assert.equal(result.summary.totalPhases, 2);
   });
 
+  it("valida la alineación del fin de fase con el cronograma calculado", () => {
+    const scheduledPhase = phaseScheduleService.buildPhaseSchedule({
+      phase: "ANÁLISIS",
+      competencies: [
+        {
+          startDate: new Date(2026, 1, 1),
+          endDate: new Date(2026, 1, 11),
+        },
+      ],
+    });
+    const result = phaseStartService.buildProgramTimeline([scheduledPhase]);
+
+    assert.equal(
+      result.timeline[0].phaseEndDate.getTime(),
+      result.timeline[0].calculatedEndDate.getTime(),
+    );
+    assert.equal(result.summary.timelineIntegrity, true);
+    assert.equal(result.summary.alignedPhaseEndDates, 1);
+    assert.equal(result.summary.misalignedPhaseEndDates, 0);
+    assert.equal(result.summary.phaseEndDateAlignmentPercentage, 100);
+    assert.equal(result.summary.overallTimelineQualityScore, 100);
+  });
+
+  it("detecta cuando el fin de fase difiere del fin calculado", () => {
+    const result = phaseStartService.buildProgramTimeline([
+      {
+        phase: "ANÁLISIS",
+        phaseStartDate: new Date(2026, 1, 1),
+        phaseDurationDays: 9,
+        phaseEndDate: new Date(2026, 1, 11),
+      },
+    ]);
+
+    assert.equal(
+      result.timeline[0].phaseEndDate.getTime() ===
+        result.timeline[0].calculatedEndDate.getTime(),
+      false,
+    );
+    assert.equal(result.summary.timelineIntegrity, false);
+    assert.equal(result.summary.alignedPhaseEndDates, 0);
+    assert.equal(result.summary.misalignedPhaseEndDates, 1);
+    assert.equal(result.summary.phaseEndDateAlignmentPercentage, 0);
+    assert.equal(result.summary.invalidPhases, 1);
+    assert.equal(result.summary.overallTimelineQualityScore, 0);
+  });
+
+  it("resume las fechas de fin alineadas e inconsistentes", () => {
+    const phases = Array.from({ length: 5 }, (_, index) => ({
+      phase: `FASE ${index + 1}`,
+      phaseStartDate: new Date(2026, 1, 1),
+      phaseDurationDays: 10,
+      phaseEndDate: new Date(2026, 1, 11 + index * 10 + (index === 4 ? 1 : 0)),
+    }));
+    const result = phaseStartService.buildProgramTimeline(phases);
+
+    assert.equal(result.summary.alignedPhaseEndDates, 4);
+    assert.equal(result.summary.misalignedPhaseEndDates, 1);
+    assert.equal(result.summary.phaseEndDateAlignmentPercentage, 80);
+  });
+
+  it("calcula la cantidad y el porcentaje de fases válidas", () => {
+    const phases = Array.from({ length: 10 }, (_, index) => ({
+      phase: `FASE ${index + 1}`,
+      phaseStartDate: new Date(2026, 1, 1),
+      phaseDurationDays: 10,
+      phaseEndDate: new Date(2026, 1, 11 + index * 10 + (index >= 8 ? 1 : 0)),
+    }));
+    const result = phaseStartService.buildProgramTimeline(phases);
+
+    assert.equal(result.summary.totalPhases, 10);
+    assert.equal(result.summary.validPhases, 8);
+    assert.equal(result.summary.invalidPhases, 2);
+    assert.equal(result.summary.phaseValidityPercentage, 80);
+  });
+
+  it("calcula y redondea la puntuación global de calidad temporal", () => {
+    const result = phaseStartService.buildProgramTimeline([
+      {
+        phase: "FASE 1",
+        phaseStartDate: new Date(2026, 1, 1),
+        phaseDurationDays: 1,
+        phaseEndDate: new Date(2026, 1, 2),
+      },
+      {
+        phase: "FASE 2",
+        phaseDurationDays: 1,
+        phaseEndDate: new Date(2026, 1, 4),
+      },
+      {
+        phase: "FASE 3",
+        phaseDurationDays: 1,
+      },
+    ]);
+
+    assert.equal(result.summary.phaseValidityPercentage, 66.67);
+    assert.equal(result.summary.phaseEndDateAlignmentPercentage, 50);
+    assert.equal(result.summary.overallTimelineQualityScore, 61.67);
+  });
+
   it("construye un programa vacío cuando no existen fases", () => {
     const result = phaseStartService.buildProgramTimeline([]);
 
     assert.deepEqual(result.timeline, []);
     assert.equal(result.summary.totalPhases, 0);
+    assert.equal(result.summary.alignedPhaseEndDates, 0);
+    assert.equal(result.summary.misalignedPhaseEndDates, 0);
+    assert.equal(result.summary.phaseEndDateAlignmentPercentage, 0);
+    assert.equal(result.summary.validPhases, 0);
+    assert.equal(result.summary.phaseValidityPercentage, 0);
+    assert.equal(result.summary.overallTimelineQualityScore, 0);
   });
 
   it("mantiene sincronizada la línea temporal con el resumen", () => {
