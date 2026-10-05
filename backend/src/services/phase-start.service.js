@@ -108,6 +108,39 @@ const calculatePhaseTimeline = (phases) => {
 
 /// Construye un resumen ejecutivo del cronograma a partir de la secuencia calculada de fases.
 // Calcula la cantidad total de etapas, la fecha inicial y final del programa, y la duración total en días, validando que la línea de tiempo tenga datos coherentes antes de devolver el resultado.
+const isPhaseTimelineValid = (phase) => {
+  const { calculatedStartDate, calculatedEndDate, phaseEndDate } = phase;
+  const dates = [calculatedStartDate, calculatedEndDate, phaseEndDate];
+  const datesAreValid = dates.every(
+    (date) =>
+      date === null ||
+      date === undefined ||
+      isValidDateValue(date),
+  );
+
+  if (!datesAreValid) {
+    return false;
+  }
+
+  const calculatedDatesAreConsistent =
+    calculatedStartDate === null ||
+    calculatedStartDate === undefined ||
+    calculatedEndDate === null ||
+    calculatedEndDate === undefined ||
+    new Date(calculatedStartDate).getTime() <=
+      new Date(calculatedEndDate).getTime();
+
+  const phaseEndDateIsAligned =
+    phaseEndDate === null ||
+    phaseEndDate === undefined ||
+    calculatedEndDate === null ||
+    calculatedEndDate === undefined ||
+    new Date(phaseEndDate).getTime() ===
+      new Date(calculatedEndDate).getTime();
+
+  return calculatedDatesAreConsistent && phaseEndDateIsAligned;
+};
+
 const buildTimelineSummary = (timeline) => {
   if (!Array.isArray(timeline) || timeline.length === 0) {
     return {
@@ -116,21 +149,57 @@ const buildTimelineSummary = (timeline) => {
       endDate: null,
       durationDays: 0,
       timelineIntegrity: true,
+      alignedPhaseEndDates: 0,
+      misalignedPhaseEndDates: 0,
+      phaseEndDateAlignmentPercentage: 0,
+      invalidPhases: 0,
+      validPhases: 0,
+      phaseValidityPercentage: 0,
+      overallTimelineQualityScore: 0,
     };
   }
 
-  const timelineIntegrity = timeline.every((phase) => {
-    if (!phase.calculatedStartDate || !phase.calculatedEndDate) {
-      return true;
-    }
+  const phasesWithComparableEndDates = timeline.filter(
+    (phase) =>
+      phase.phaseEndDate !== null &&
+      phase.phaseEndDate !== undefined &&
+      phase.calculatedEndDate !== null &&
+      phase.calculatedEndDate !== undefined,
+  );
 
-    return (
-      isValidDateValue(phase.calculatedStartDate) &&
-      isValidDateValue(phase.calculatedEndDate) &&
-      new Date(phase.calculatedStartDate).getTime() <=
-        new Date(phase.calculatedEndDate).getTime()
-    );
-  });
+  const alignedPhaseEndDates = phasesWithComparableEndDates.filter(
+    ({ phaseEndDate, calculatedEndDate }) =>
+      isValidDateValue(phaseEndDate) &&
+      isValidDateValue(calculatedEndDate) &&
+      new Date(phaseEndDate).getTime() ===
+        new Date(calculatedEndDate).getTime(),
+  ).length;
+  const misalignedPhaseEndDates =
+    phasesWithComparableEndDates.length - alignedPhaseEndDates;
+  const phaseEndDateAlignmentPercentage =
+    phasesWithComparableEndDates.length > 0
+      ? Number(
+          (
+            (alignedPhaseEndDates / phasesWithComparableEndDates.length) *
+            100
+          ).toFixed(2),
+        )
+      : 0;
+
+  const invalidPhases = timeline.filter(
+    (phase) => !isPhaseTimelineValid(phase),
+  ).length;
+  const validPhases = timeline.length - invalidPhases;
+  const phaseValidityPercentage = Number(
+    ((validPhases / timeline.length) * 100).toFixed(2),
+  );
+  const overallTimelineQualityScore = Number(
+    (
+      phaseValidityPercentage * 0.7 +
+      phaseEndDateAlignmentPercentage * 0.3
+    ).toFixed(2),
+  );
+  const timelineIntegrity = invalidPhases === 0;
 
   const startDate = isValidDateValue(timeline[0].calculatedStartDate)
     ? new Date(timeline[0].calculatedStartDate)
@@ -151,6 +220,13 @@ const buildTimelineSummary = (timeline) => {
     endDate,
     durationDays,
     timelineIntegrity,
+    alignedPhaseEndDates,
+    misalignedPhaseEndDates,
+    phaseEndDateAlignmentPercentage,
+    invalidPhases,
+    validPhases,
+    phaseValidityPercentage,
+    overallTimelineQualityScore,
   };
 };
 
